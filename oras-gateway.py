@@ -7,6 +7,8 @@ import argparse
 from urllib.parse import urlparse
 import base64
 from collections import namedtuple
+import datetime
+from email.utils import format_datetime
 import binascii
 
 
@@ -35,6 +37,12 @@ def format_digest(digest):
     )
 
 
+def format_timestamp(timestamp):
+    iso = timestamp.replace("Z", "+00:00")
+    modified = datetime.datetime.fromisoformat(iso)
+    return format_datetime(modified, usegmt=True)
+
+
 class ORASServer(http.server.BaseHTTPRequestHandler):
     def do_HEAD(self):
         self.do(False)
@@ -53,6 +61,7 @@ class ORASServer(http.server.BaseHTTPRequestHandler):
             client.login(auth.username, auth.password, hostname=url.netloc)
         digest = None
         title = None
+        created = None
         blob = None
         try:
             manifest = client.get_manifest(package)
@@ -61,6 +70,8 @@ class ORASServer(http.server.BaseHTTPRequestHandler):
             digest = layer["digest"]
             assert "annotations" in layer
             title = layer["annotations"].get("org.opencontainers.image.title")
+            annotations = manifest.get("annotations", {})
+            created = annotations.get("org.opencontainers.image.created")
             if content:
                 blob = client.get_blob(
                     package, digest=layer["digest"], stream=True, head=False
@@ -76,6 +87,8 @@ class ORASServer(http.server.BaseHTTPRequestHandler):
             self.send_header("Content-Digest", format_digest(digest))
         if title:
             self.send_header("Content-Disposition", "attachment; filename=%s" % title)
+        if created:
+            self.send_header("Last-Modified", format_timestamp(created))
         self.end_headers()
         if content:
             self.wfile.write(blob.content)

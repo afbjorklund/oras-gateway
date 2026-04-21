@@ -7,6 +7,7 @@ import argparse
 from urllib.parse import urlparse
 import base64
 from collections import namedtuple
+import binascii
 
 
 def is_loopback(ip):
@@ -25,6 +26,15 @@ def get_basic_auth(headers):
     return None
 
 
+def format_digest(digest):
+    algorithm, value = digest.split(":")
+    checksum = binascii.unhexlify(value)
+    return "%s=:%s:" % (
+        algorithm.replace("sha256", "sha-256"),
+        base64.standard_b64encode(checksum).decode(),
+    )
+
+
 class ORASServer(http.server.BaseHTTPRequestHandler):
     def do_HEAD(self):
         self.do(False)
@@ -41,12 +51,14 @@ class ORASServer(http.server.BaseHTTPRequestHandler):
         auth = get_basic_auth(self.headers)
         if auth:
             client.login(auth.username, auth.password, hostname=url.netloc)
+        digest = None
         title = None
         blob = None
         try:
             manifest = client.get_manifest(package)
             assert len(manifest["layers"]) == 1
             layer = manifest["layers"][0]
+            digest = layer["digest"]
             assert "annotations" in layer
             title = layer["annotations"].get("org.opencontainers.image.title")
             if content:
@@ -60,6 +72,8 @@ class ORASServer(http.server.BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", layer["mediaType"])
         self.send_header("Content-Length", layer["size"])
+        if digest:
+            self.send_header("Content-Digest", format_digest(digest))
         if title:
             self.send_header("Content-Disposition", "attachment; filename=%s" % title)
         self.end_headers()

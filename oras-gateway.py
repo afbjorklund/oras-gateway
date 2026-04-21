@@ -41,13 +41,14 @@ class ORASServer(http.server.BaseHTTPRequestHandler):
         auth = get_basic_auth(self.headers)
         if auth:
             client.login(auth.username, auth.password, hostname=url.netloc)
-        artifact = ""
+        title = None
         blob = None
         try:
             manifest = client.get_manifest(package)
             assert len(manifest["layers"]) == 1
             layer = manifest["layers"][0]
-            artifact = layer["annotations"]["org.opencontainers.image.title"]
+            assert "annotations" in layer
+            title = layer["annotations"].get("org.opencontainers.image.title")
             if content:
                 blob = client.get_blob(
                     package, digest=layer["digest"], stream=True, head=False
@@ -57,9 +58,10 @@ class ORASServer(http.server.BaseHTTPRequestHandler):
             return
 
         self.send_response(200)
-        self.send_header("Content-type", layer["mediaType"])
-        self.send_header("Content-length", layer["size"])
-        self.send_header("Content-disposition", "attachment; filename=%s" % artifact)
+        self.send_header("Content-Type", layer["mediaType"])
+        self.send_header("Content-Length", layer["size"])
+        if title:
+            self.send_header("Content-Disposition", "attachment; filename=%s" % title)
         self.end_headers()
         if content:
             self.wfile.write(blob.content)

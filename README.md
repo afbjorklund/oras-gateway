@@ -47,4 +47,29 @@ Downloading a948904f2f0f artifact.txt
 Downloaded  a948904f2f0f artifact.txt
 Pulled [registry] localhost:5000/artifact:latest
 Digest: sha256:9c461af426ce2c4fadba5c5a07421fe89c1f12c6c54e03347ca49059f1b6873a
+$ oras manifest fetch localhost:5000/artifact:latest | jq
+{
+  "schemaVersion": 2,
+  "mediaType": "application/vnd.oci.image.manifest.v1+json",
+  "artifactType": "application/vnd.unknown.artifact.v1",
+  "config": {
+    "mediaType": "application/vnd.oci.empty.v1+json",
+    "digest": "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+    "size": 2,
+    "data": "e30="
+  },
+  "layers": [
+    {
+      "mediaType": "application/vnd.oci.image.layer.v1.tar",
+      "digest": "sha256:a948904f2f0f479b8f8197694b30184b0d2ed1c1cd2a1ec0fb85d299a192a447",
+      "size": 12,
+      "annotations": {
+        "org.opencontainers.image.title": "artifact.txt"
+      }
+    }
+  ],
+  "annotations": {
+    "org.opencontainers.image.created": "2026-04-21T12:30:35Z"
+  }
+}
 ```
